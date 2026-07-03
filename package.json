@@ -1,0 +1,34 @@
+{
+  "name": "fic-widget-ai-builder",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "prebuild": "expo prebuild --clean",
+    "prebuild:ios": "expo prebuild --platform ios --clean",
+    "prebuild:android": "expo prebuild --platform android --clean",
+    "run:ios": "expo run:ios",
+    "run:android": "expo run:android",
+    "typecheck": "tsc --noEmit",
+    "doctor": "npx expo-doctor",
+    "mock:server": "npm --prefix mcp-server run http",
+    "mock:server:mcp": "npm --prefix mcp-server run dev"
+  },
+  "dependencies": {
+    "@expo/ui": "~56.0.19",
+    "expo": "~56.0.13",
+    "expo-status-bar": "~56.0.4",
+    "expo-widgets": "~56.0.20",
+    "react": "19.2.3",
+    "react-native": "0.85.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "packageManager": "yarn@4.12.0+sha512.f45ab632439a67f8bc759bf32ead036a1f413287b9042726b7cc4818b7b49e14e9423ba49b18f9e06ea4941c1ad062385b1d8760a8d5091a1a31e5f6219afca8"
+}

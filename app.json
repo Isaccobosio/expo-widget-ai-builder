@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Fatture in Cloud Widget",
+    "slug": "fic-widget-ai-builder",
+    "scheme": "ficwidget",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.teamsystem.fic.widgetpoc",
+      "deploymentTarget": "16.4"
+    },
+    "android": {
+      "package": "com.teamsystem.fic.widgetpoc",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.com.teamsystem.fic.widgetpoc",
+          "enableAndroid": true,
+          "widgets": [
+            {
+              "name": "OverviewWidget",
+              "displayName": "Slot 1 · FiC",
+              "description": "Slot widget configurabile via AI dall'app Fatture in Cloud.",
+              "supportedFamilies": ["systemSmall", "systemMedium"]
+            },
+            {
+              "name": "FinanceFocusWidget",
+              "displayName": "Slot 2 · FiC",
+              "description": "Slot widget configurabile via AI dall'app Fatture in Cloud.",
+              "supportedFamilies": ["systemSmall", "systemMedium"]
+            },
+            {
+              "name": "TaxTrackerWidget",
+              "displayName": "Slot 3 · FiC",
+              "description": "Slot widget configurabile via AI dall'app Fatture in Cloud.",
+              "supportedFamilies": ["systemSmall", "systemMedium"]
+            }
+          ]
+        }
+      ]
+    ]
+  }
+}

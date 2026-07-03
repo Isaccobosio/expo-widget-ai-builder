@@ -1,0 +1,28 @@
+{
+  "name": "fic-widget-mcp-mock",
+  "version": "0.1.0",
+  "description": "Local MCP mock server that simulates Fatture in Cloud finance endpoints for the widget POC.",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "fic-widget-mcp-mock": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "http": "tsx src/http.ts",
+    "test:tools": "tsx src/self-check.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "openai": "^4.104.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  }
+}
