@@ -572,7 +572,7 @@ function WidgetPreviewTile({
       : t === 'list_focus'
         ? isSmall
           ? 1
-          : 3
+          : 2
         : isSmall
           ? 1
           : 2;
@@ -656,11 +656,11 @@ function WidgetPreviewTile({
           {items.map((it) => {
             const parts = (it.subtext ?? '').split(' · ');
             const amountIdx = parts.findIndex((p) => p.includes('€'));
-            const amount = amountIdx >= 0 ? parts[amountIdx] : it.subtext;
+            const amount = amountIdx >= 0 ? parts[amountIdx] : '';
             const caption =
               amountIdx >= 0
                 ? parts.filter((_, i) => i !== amountIdx).join(' · ')
-                : '';
+                : it.subtext;
             return (
               <View key={it.id} style={styles.previewItem}>
                 {/* flex: 1 + minWidth: 0 lets this container shrink so the

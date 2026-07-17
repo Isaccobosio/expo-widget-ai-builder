@@ -140,7 +140,7 @@ const DynamicWidget = (
       : template === 'list_focus'
         ? isSmall
           ? 1
-          : 3
+          : 2
         : isSmall
           ? 1
           : 2;
@@ -306,13 +306,17 @@ const DynamicWidget = (
             const rawSubtext = it.subtext ?? '';
             // Split "caption · amount" — the last piece containing € becomes
             // the money column, everything else becomes the caption line.
+            // If there is NO currency token, the whole subtext is descriptive
+            // copy (for example a metric_with_alert recommendation). It must
+            // stay in the shrinkable caption column — never in the fixed-size
+            // amount column, where a long sentence would overflow the tile.
             const parts = rawSubtext.split(' · ');
             const amountIdx = parts.findIndex((p) => p.includes('€'));
-            const amount = amountIdx >= 0 ? parts[amountIdx] : rawSubtext;
+            const amount = amountIdx >= 0 ? parts[amountIdx] : '';
             const caption =
               amountIdx >= 0
                 ? parts.filter((_, i) => i !== amountIdx).join(' · ')
-                : '';
+                : rawSubtext;
             // Saturated tone that reads well on both light and dark bg.
             const amountColor =
               it.status === 'critical'
