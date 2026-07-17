@@ -506,7 +506,8 @@ function WidgetPreviewTile({
   const accent = ACCENT[t];
   const dims = PREVIEW_DIMS[size];
 
-  // Mirror the widget's per-template + per-size item budget.
+  // Mirror the widget's per-template + per-size item budget. Small tiles are
+  // TIGHT (155pt tall), so split_overview shows only 1 item on small.
   const itemLimit =
     t === 'metric_with_alert'
       ? 1
@@ -515,21 +516,21 @@ function WidgetPreviewTile({
           ? 2
           : 5
         : isSmall
-          ? 2
+          ? 1
           : 3;
   const items = props.content.secondarySection.items.slice(0, itemLimit);
 
   const primaryValueSize =
     t === 'metric_with_alert'
       ? isSmall
-        ? 26
+        ? 24
         : 36
       : t === 'list_focus'
         ? isSmall
-          ? 16
+          ? 15
           : 20
         : isSmall
-          ? 22
+          ? 20
           : 28;
 
   return (
@@ -604,7 +605,11 @@ function WidgetPreviewTile({
                 : '';
             return (
               <View key={it.id} style={styles.previewItem}>
-                <View style={{ flex: 1 }}>
+                {/* flex: 1 + minWidth: 0 lets this container shrink so the
+                    Text inside actually truncates (RN quirk: without
+                    minWidth: 0 flex children refuse to shrink below content
+                    width) */}
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.previewItemText} numberOfLines={1}>
                     {it.text}
                   </Text>
@@ -1024,7 +1029,7 @@ const styles = StyleSheet.create({
   previewTile: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 12,
+    padding: 10,
     shadowColor: '#000000',
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -1040,19 +1045,19 @@ const styles = StyleSheet.create({
   },
   previewTitlePill: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 999,
     maxWidth: '100%',
   },
   previewTitlePillText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.4,
     color: '#FFFFFF',
   },
   previewMetricBlock: {
-    marginTop: 4,
+    marginTop: 2,
   },
   previewValue: {
     fontWeight: '700',
@@ -1061,21 +1066,21 @@ const styles = StyleSheet.create({
   previewListHeader: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginTop: 6,
-    gap: 8,
+    marginTop: 4,
+    gap: 6,
   },
   previewMetricLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6B7280',
     marginTop: 1,
   },
   previewTrend: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     marginTop: 1,
   },
   previewTrendFaint: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#9CA3AF',
     marginTop: 1,
   },
@@ -1084,32 +1089,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6B7280',
     letterSpacing: 0.6,
-    marginTop: 8,
+    marginTop: 6,
   },
   previewItems: {
-    marginTop: 4,
-    gap: 4,
+    marginTop: 3,
+    gap: 3,
   },
   previewItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   previewItemText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#111827',
     fontWeight: '600',
   },
   previewItemSubtext: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#6B7280',
     marginTop: 1,
   },
   previewItemAmount: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    maxWidth: '55%',
     textAlign: 'right',
+    // No maxWidth — amount takes its intrinsic width and the label flex
+    // container shrinks to fill the rest (mirrors the widget's fixedSize
+    // + layoutPriority contract).
   },
   metaBlock: {
     gap: 2,

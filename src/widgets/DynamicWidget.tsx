@@ -25,9 +25,11 @@
 import { HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
   background,
+  fixedSize,
   font,
   foregroundStyle,
   frame,
+  layoutPriority,
   lineLimit,
   minimumScaleFactor,
   multilineTextAlignment,
@@ -129,8 +131,9 @@ const DynamicWidget = (
         ? '#10B981' // emerald-500
         : '#3B82F6'; // blue-500
 
-  // Per-template item budget. `list_focus` is the "super-large list" view,
-  // so on medium we lean into the list.
+  // Per-template item budget. Small widgets are TIGHT (~155pt tall with
+  // WidgetKit's own margins already applied), so we keep list counts low
+  // and only expand on medium.
   const itemLimit =
     template === 'metric_with_alert'
       ? 1
@@ -139,24 +142,24 @@ const DynamicWidget = (
           ? 2
           : 5
         : isSmall
-          ? 2
+          ? 1
           : 3;
   const items = safeItems.slice(0, itemLimit);
 
-  // Primary value size. Large for metric_with_alert (hero number), compact
-  // for list_focus (the list gets the real estate).
+  // Primary value size. Trimmed on small so the value + label + optional list
+  // all fit within the tiny 155pt tile.
   const primaryValueSize =
     template === 'metric_with_alert'
       ? isSmall
-        ? 34
+        ? 30
         : 48
       : template === 'list_focus'
         ? isSmall
-          ? 18
+          ? 17
           : 22
         : isSmall
-          ? 26
-          : 34;
+          ? 22
+          : 32;
 
   return (
     <VStack
@@ -170,21 +173,24 @@ const DynamicWidget = (
           maxHeight: 10000,
           alignment: 'topLeading',
         }),
-        padding({ all: 14 }),
+        // WidgetKit already applies its own content margins on iOS 17+;
+        // we add only a tiny extra pad so text doesn't touch the tile edge.
+        padding({ all: 2 }),
       ]}
     >
       {/* Title pill — colored accent bar makes each template visually distinct.
-          White text on saturated accent → readable in both light and dark. */}
+          fixedSize forces the pill to hug its content instead of getting
+          squeezed by the surrounding HStack + Spacer. */}
       {title ? (
         <HStack alignment="center" spacing={6}>
           <Text
             modifiers={[
-              font({ size: 10, weight: 'bold' }),
+              font({ size: isSmall ? 9 : 10, weight: 'bold' }),
               foregroundStyle('#FFFFFF'),
-              padding({ horizontal: 8, vertical: 3 }),
+              padding({ horizontal: 7, vertical: 2 }),
               background(accentColor, shapes.capsule()),
               lineLimit(1),
-              truncationMode('tail'),
+              fixedSize({ horizontal: true }),
             ]}
           >
             {title}
@@ -199,7 +205,7 @@ const DynamicWidget = (
         <HStack
           alignment="firstTextBaseline"
           spacing={8}
-          modifiers={[padding({ top: 8 })]}
+          modifiers={[padding({ top: 6 })]}
         >
           <VStack alignment="leading" spacing={0}>
             <Text
@@ -239,7 +245,7 @@ const DynamicWidget = (
         </HStack>
       ) : (
         // Big value stacked above label.
-        <VStack alignment="leading" spacing={2} modifiers={[padding({ top: 8 })]}>
+        <VStack alignment="leading" spacing={1} modifiers={[padding({ top: 6 })]}>
           <Text
             modifiers={[
               font({ size: primaryValueSize, weight: 'bold' }),
@@ -281,7 +287,7 @@ const DynamicWidget = (
           modifiers={[
             font({ size: 9, weight: 'bold' }),
             foregroundStyle('secondary'),
-            padding({ top: template === 'list_focus' ? 10 : 12 }),
+            padding({ top: template === 'list_focus' ? 6 : 8 }),
             lineLimit(1),
             truncationMode('tail'),
           ]}
@@ -292,12 +298,13 @@ const DynamicWidget = (
 
       {/* Item list — two-column rows. Amount is bold + status-colored (no
           background chip) so it stays readable on both light and dark
-          widget surfaces. */}
+          widget surfaces. Amount uses fixedSize + layoutPriority so it
+          always renders fully and the label truncates first. */}
       {items.length > 0 ? (
         <VStack
           alignment="leading"
-          spacing={template === 'list_focus' ? 8 : 6}
-          modifiers={[padding({ top: 6 })]}
+          spacing={template === 'list_focus' ? 6 : 4}
+          modifiers={[padding({ top: 4 })]}
         >
           {items.map((it) => {
             const rawSubtext = it.subtext ?? '';
@@ -367,7 +374,10 @@ const DynamicWidget = (
                       font({ size: amountSize, weight: 'bold' }),
                       foregroundStyle(amountColor),
                       lineLimit(1),
-                      minimumScaleFactor(0.6),
+                      // Amount takes layout priority so the label is the one
+                      // that truncates when there isn't enough room.
+                      layoutPriority(1),
+                      fixedSize({ horizontal: true }),
                       multilineTextAlignment('trailing'),
                     ]}
                   >
