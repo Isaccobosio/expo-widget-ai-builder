@@ -61,12 +61,6 @@ type SlotState = {
 
 const HISTORY_LIMIT = 8;
 
-const STATUS_COLOR: Record<WidgetStatus, string> = {
-  critical: '#DC2626',
-  warning: '#D97706',
-  info: '#2563EB',
-};
-
 const TEMPLATE_LABEL: Record<DynamicWidgetProps['template'], string> = {
   split_overview: 'Panoramica',
   list_focus: 'Lista in evidenza',
@@ -415,55 +409,7 @@ function SlotEditor({
         <Text style={styles.error}>{slot.message}</Text>
       ) : null}
 
-      {slot.props ? (
-        <View style={styles.preview}>
-          <View style={styles.previewHeader}>
-            <Text style={styles.previewLabel}>ANTEPRIMA SLOT</Text>
-            <View style={styles.templatePill}>
-              <Text style={styles.templatePillText}>
-                {TEMPLATE_LABEL[slot.props.template]}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.previewTitle}>{slot.props.content.title}</Text>
-          <Text style={styles.previewValue}>
-            {slot.props.content.primaryMetric.value}
-          </Text>
-          <Text style={styles.previewMetricLabel}>
-            {slot.props.content.primaryMetric.label}
-          </Text>
-          {slot.props.content.primaryMetric.trend ? (
-            <Text style={styles.previewTrend}>
-              {slot.props.content.primaryMetric.trend}
-            </Text>
-          ) : null}
-          {slot.props.content.secondarySection.items.length > 0 ? (
-            <View style={styles.previewItems}>
-              <Text style={styles.previewSectionTitle}>
-                {slot.props.content.secondarySection.title}
-              </Text>
-              {slot.props.content.secondarySection.items.map((it) => (
-                <View key={it.id} style={styles.previewItem}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      { backgroundColor: STATUS_COLOR[it.status] },
-                    ]}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.previewItemText}>{it.text}</Text>
-                    {it.subtext ? (
-                      <Text style={styles.previewItemSubtext}>
-                        {it.subtext}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+      {slot.props ? <WidgetPreview props={slot.props} /> : null}
 
       {meta ? (
         <View style={styles.metaBlock}>
@@ -484,6 +430,158 @@ function SlotEditor({
         </View>
       ) : null}
     </ScrollView>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* WidgetPreview — a faithful RN mock of what the real widget renders          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Kept in visual sync with `src/widgets/DynamicWidget.tsx`. This is a plain RN
+ * approximation (no SwiftUI here) — it's what the user sees inside the app
+ * before / after tapping "Sincronizza". Same dark palette, same template
+ * tinting, same status-colored amount chips.
+ */
+const PREVIEW_BG: Record<DynamicWidgetProps['template'], string> = {
+  split_overview: '#111827',
+  list_focus: '#1E1B4B',
+  metric_with_alert: '#0F172A',
+};
+
+const PREVIEW_ACCENT: Record<DynamicWidgetProps['template'], string> = {
+  split_overview: '#60A5FA',
+  list_focus: '#A5B4FC',
+  metric_with_alert: '#34D399',
+};
+
+const CHIP_TEXT: Record<WidgetStatus, string> = {
+  critical: '#FCA5A5',
+  warning: '#FCD34D',
+  info: '#93C5FD',
+};
+
+const CHIP_BG: Record<WidgetStatus, string> = {
+  critical: '#7F1D1D',
+  warning: '#78350F',
+  info: '#1E3A8A',
+};
+
+function WidgetPreview({ props }: { props: DynamicWidgetProps }) {
+  const t = props.template;
+  const bg = PREVIEW_BG[t];
+  const accent = PREVIEW_ACCENT[t];
+  const items = props.content.secondarySection.items;
+  return (
+    <View style={styles.previewWrapper}>
+      <View style={styles.previewHeaderBar}>
+        <Text style={styles.previewLabel}>ANTEPRIMA SLOT</Text>
+        <View style={styles.templatePill}>
+          <Text style={styles.templatePillText}>{TEMPLATE_LABEL[t]}</Text>
+        </View>
+      </View>
+
+      <View style={[styles.previewTile, { backgroundColor: bg }]}>
+        <View style={[styles.previewTitlePill, { backgroundColor: accent }]}>
+          <Text style={[styles.previewTitlePillText, { color: bg }]}>
+            {props.content.title}
+          </Text>
+        </View>
+
+        {t === 'list_focus' ? (
+          <View style={styles.previewListHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.previewMetricLabelDark}>
+                {props.content.primaryMetric.label}
+              </Text>
+              {props.content.primaryMetric.trend ? (
+                <Text style={styles.previewTrendFaint}>
+                  {props.content.primaryMetric.trend}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={styles.previewValueSmallDark} numberOfLines={1}>
+              {props.content.primaryMetric.value}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.previewMetricBlock}>
+            <Text
+              style={[
+                styles.previewValueDark,
+                t === 'metric_with_alert' && styles.previewValueHero,
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {props.content.primaryMetric.value}
+            </Text>
+            <Text style={styles.previewMetricLabelDark}>
+              {props.content.primaryMetric.label}
+            </Text>
+            {props.content.primaryMetric.trend ? (
+              <Text style={[styles.previewTrendDark, { color: accent }]}>
+                {props.content.primaryMetric.trend}
+              </Text>
+            ) : null}
+          </View>
+        )}
+
+        {items.length > 0 ? (
+          <View style={styles.previewItemsDark}>
+            {props.content.secondarySection.title ? (
+              <Text style={styles.previewSectionTitleDark}>
+                {props.content.secondarySection.title}
+              </Text>
+            ) : null}
+            {items.map((it) => {
+              const parts = (it.subtext ?? '').split(' · ');
+              const amountIdx = parts.findIndex((p) => p.includes('€'));
+              const amount = amountIdx >= 0 ? parts[amountIdx] : it.subtext;
+              const caption =
+                amountIdx >= 0
+                  ? parts.filter((_, i) => i !== amountIdx).join(' · ')
+                  : '';
+              return (
+                <View key={it.id} style={styles.previewItemDark}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.previewItemTextDark} numberOfLines={1}>
+                      {it.text}
+                    </Text>
+                    {caption ? (
+                      <Text
+                        style={styles.previewItemSubtextDark}
+                        numberOfLines={1}
+                      >
+                        {caption}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {amount ? (
+                    <View
+                      style={[
+                        styles.amountChip,
+                        { backgroundColor: CHIP_BG[it.status] },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.amountChipText,
+                          { color: CHIP_TEXT[it.status] },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {amount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -830,12 +928,110 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 12,
   },
-  preview: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+  previewWrapper: {
+    gap: 8,
+  },
+  previewHeaderBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  previewTile: {
+    borderRadius: 20,
     padding: 14,
+    gap: 4,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    minHeight: 170,
+  },
+  previewTitlePill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginBottom: 2,
+  },
+  previewTitlePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  previewMetricBlock: {
+    marginTop: 6,
     gap: 2,
   },
+  previewValueDark: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  previewValueHero: {
+    fontSize: 42,
+  },
+  previewValueSmallDark: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginLeft: 8,
+  },
+  previewListHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 8,
+  },
+  previewMetricLabelDark: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  previewTrendDark: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  previewTrendFaint: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  previewSectionTitleDark: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  previewItemsDark: {
+    marginTop: 10,
+    gap: 8,
+  },
+  previewItemDark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewItemTextDark: {
+    fontSize: 13,
+    color: '#F1F5F9',
+    fontWeight: '600',
+  },
+  previewItemSubtextDark: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  amountChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  amountChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  // (legacy light-theme preview styles removed — WidgetPreview owns its own set)
   previewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
