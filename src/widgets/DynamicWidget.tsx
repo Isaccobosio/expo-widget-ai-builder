@@ -130,19 +130,20 @@ const DynamicWidget = (
         ? '#10B981' // emerald-500
         : '#3B82F6'; // blue-500
 
-  // Per-template item budget. Small widgets are TIGHT (~155pt tall with
-  // WidgetKit's own margins already applied), so we keep list counts low
-  // and only expand on medium.
+  // Per-template item budget. WidgetKit small tiles are 155x155 with ~16pt
+  // content margins baked in by iOS 17, leaving very little vertical room.
+  // Medium is 329x155 — same height as small. These numbers were calibrated
+  // empirically against the on-device renders; going higher clips.
   const itemLimit =
     template === 'metric_with_alert'
       ? 1
       : template === 'list_focus'
         ? isSmall
-          ? 2
-          : 4
+          ? 1
+          : 3
         : isSmall
           ? 1
-          : 3;
+          : 2;
   const items = safeItems.slice(0, itemLimit);
 
   // Primary value size. Trimmed on small so the value + label + optional list
@@ -384,8 +385,6 @@ const DynamicWidget = (
           })}
         </VStack>
       ) : null}
-
-      <Spacer />
     </VStack>
   );
 };

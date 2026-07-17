@@ -565,17 +565,17 @@ function WidgetPreviewTile({
   const dims = PREVIEW_DIMS[size];
 
   // Mirror the widget's per-template + per-size item budget. Small tiles are
-  // TIGHT (155pt tall), so split_overview shows only 1 item on small.
+  // TIGHT (155pt tall), so most templates show only 1 item on small.
   const itemLimit =
     t === 'metric_with_alert'
       ? 1
       : t === 'list_focus'
         ? isSmall
-          ? 2
-          : 4
+          ? 1
+          : 3
         : isSmall
           ? 1
-          : 3;
+          : 2;
   const items = props.content.secondarySection.items.slice(0, itemLimit);
 
   const primaryValueSize =
