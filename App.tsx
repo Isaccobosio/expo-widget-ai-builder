@@ -438,149 +438,200 @@ function SlotEditor({
 /* -------------------------------------------------------------------------- */
 
 /**
- * Kept in visual sync with `src/widgets/DynamicWidget.tsx`. This is a plain RN
- * approximation (no SwiftUI here) — it's what the user sees inside the app
- * before / after tapping "Sincronizza". Same dark palette, same template
- * tinting, same status-colored amount chips.
+ * Kept in visual sync with `src/widgets/DynamicWidget.tsx`. Renders both the
+ * `systemSmall` (155×155) and `systemMedium` (329×155) shapes so the user
+ * can see exactly what each Home Screen size will look like before adding
+ * the widget. Uses the light system palette (no bg color) to match the real
+ * widget on iOS.
  */
-const PREVIEW_BG: Record<DynamicWidgetProps['template'], string> = {
-  split_overview: '#111827',
-  list_focus: '#1E1B4B',
-  metric_with_alert: '#0F172A',
+const ACCENT: Record<DynamicWidgetProps['template'], string> = {
+  split_overview: '#3B82F6', // blue-500
+  list_focus: '#6366F1', // indigo-500
+  metric_with_alert: '#10B981', // emerald-500
 };
 
-const PREVIEW_ACCENT: Record<DynamicWidgetProps['template'], string> = {
-  split_overview: '#60A5FA',
-  list_focus: '#A5B4FC',
-  metric_with_alert: '#34D399',
+const AMOUNT_COLOR: Record<WidgetStatus, string> = {
+  critical: '#DC2626', // red-600
+  warning: '#D97706', // amber-600
+  info: '#2563EB', // blue-600
 };
 
-const CHIP_TEXT: Record<WidgetStatus, string> = {
-  critical: '#FCA5A5',
-  warning: '#FCD34D',
-  info: '#93C5FD',
-};
+/** Approximate WidgetKit rendered sizes (systemSmall / systemMedium on 3x). */
+const PREVIEW_DIMS = {
+  small: { width: 155, height: 155 },
+  medium: { width: 329, height: 155 },
+} as const;
 
-const CHIP_BG: Record<WidgetStatus, string> = {
-  critical: '#7F1D1D',
-  warning: '#78350F',
-  info: '#1E3A8A',
-};
+type PreviewSize = 'small' | 'medium';
 
 function WidgetPreview({ props }: { props: DynamicWidgetProps }) {
-  const t = props.template;
-  const bg = PREVIEW_BG[t];
-  const accent = PREVIEW_ACCENT[t];
-  const items = props.content.secondarySection.items;
   return (
     <View style={styles.previewWrapper}>
       <View style={styles.previewHeaderBar}>
-        <Text style={styles.previewLabel}>ANTEPRIMA SLOT</Text>
+        <Text style={styles.previewLabel}>ANTEPRIMA WIDGET</Text>
         <View style={styles.templatePill}>
-          <Text style={styles.templatePillText}>{TEMPLATE_LABEL[t]}</Text>
+          <Text style={styles.templatePillText}>
+            {TEMPLATE_LABEL[props.template]}
+          </Text>
         </View>
       </View>
 
-      <View style={[styles.previewTile, { backgroundColor: bg }]}>
-        <View style={[styles.previewTitlePill, { backgroundColor: accent }]}>
-          <Text style={[styles.previewTitlePillText, { color: bg }]}>
-            {props.content.title}
-          </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.previewGallery}
+      >
+        <View style={styles.previewColumn}>
+          <Text style={styles.previewSizeLabel}>Piccolo</Text>
+          <WidgetPreviewTile size="small" props={props} />
         </View>
+        <View style={styles.previewColumn}>
+          <Text style={styles.previewSizeLabel}>Medio</Text>
+          <WidgetPreviewTile size="medium" props={props} />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
 
-        {t === 'list_focus' ? (
-          <View style={styles.previewListHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.previewMetricLabelDark}>
-                {props.content.primaryMetric.label}
-              </Text>
-              {props.content.primaryMetric.trend ? (
-                <Text style={styles.previewTrendFaint}>
-                  {props.content.primaryMetric.trend}
-                </Text>
-              ) : null}
-            </View>
-            <Text style={styles.previewValueSmallDark} numberOfLines={1}>
-              {props.content.primaryMetric.value}
+function WidgetPreviewTile({
+  size,
+  props,
+}: {
+  size: PreviewSize;
+  props: DynamicWidgetProps;
+}) {
+  const isSmall = size === 'small';
+  const t = props.template;
+  const accent = ACCENT[t];
+  const dims = PREVIEW_DIMS[size];
+
+  // Mirror the widget's per-template + per-size item budget.
+  const itemLimit =
+    t === 'metric_with_alert'
+      ? 1
+      : t === 'list_focus'
+        ? isSmall
+          ? 2
+          : 5
+        : isSmall
+          ? 2
+          : 3;
+  const items = props.content.secondarySection.items.slice(0, itemLimit);
+
+  const primaryValueSize =
+    t === 'metric_with_alert'
+      ? isSmall
+        ? 26
+        : 36
+      : t === 'list_focus'
+        ? isSmall
+          ? 16
+          : 20
+        : isSmall
+          ? 22
+          : 28;
+
+  return (
+    <View style={[styles.previewTile, { width: dims.width, height: dims.height }]}>
+      {props.content.title ? (
+        <View style={styles.previewTitleRow}>
+          <View style={[styles.previewTitlePill, { backgroundColor: accent }]}>
+            <Text style={styles.previewTitlePillText} numberOfLines={1}>
+              {props.content.title}
             </Text>
           </View>
-        ) : (
-          <View style={styles.previewMetricBlock}>
-            <Text
-              style={[
-                styles.previewValueDark,
-                t === 'metric_with_alert' && styles.previewValueHero,
-              ]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              {props.content.primaryMetric.value}
-            </Text>
-            <Text style={styles.previewMetricLabelDark}>
+        </View>
+      ) : null}
+
+      {t === 'list_focus' ? (
+        <View style={styles.previewListHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.previewMetricLabel} numberOfLines={1}>
               {props.content.primaryMetric.label}
             </Text>
             {props.content.primaryMetric.trend ? (
-              <Text style={[styles.previewTrendDark, { color: accent }]}>
+              <Text style={styles.previewTrendFaint} numberOfLines={1}>
                 {props.content.primaryMetric.trend}
               </Text>
             ) : null}
           </View>
-        )}
+          <Text
+            style={[styles.previewValue, { fontSize: primaryValueSize }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {props.content.primaryMetric.value}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.previewMetricBlock}>
+          <Text
+            style={[styles.previewValue, { fontSize: primaryValueSize }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+          >
+            {props.content.primaryMetric.value}
+          </Text>
+          <Text style={styles.previewMetricLabel} numberOfLines={1}>
+            {props.content.primaryMetric.label}
+          </Text>
+          {props.content.primaryMetric.trend ? (
+            <Text style={[styles.previewTrend, { color: accent }]} numberOfLines={1}>
+              {props.content.primaryMetric.trend}
+            </Text>
+          ) : null}
+        </View>
+      )}
 
-        {items.length > 0 ? (
-          <View style={styles.previewItemsDark}>
-            {props.content.secondarySection.title ? (
-              <Text style={styles.previewSectionTitleDark}>
-                {props.content.secondarySection.title}
-              </Text>
-            ) : null}
-            {items.map((it) => {
-              const parts = (it.subtext ?? '').split(' · ');
-              const amountIdx = parts.findIndex((p) => p.includes('€'));
-              const amount = amountIdx >= 0 ? parts[amountIdx] : it.subtext;
-              const caption =
-                amountIdx >= 0
-                  ? parts.filter((_, i) => i !== amountIdx).join(' · ')
-                  : '';
-              return (
-                <View key={it.id} style={styles.previewItemDark}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.previewItemTextDark} numberOfLines={1}>
-                      {it.text}
+      {items.length > 0 && props.content.secondarySection.title ? (
+        <Text style={styles.previewSectionTitle} numberOfLines={1}>
+          {props.content.secondarySection.title}
+        </Text>
+      ) : null}
+
+      {items.length > 0 ? (
+        <View style={styles.previewItems}>
+          {items.map((it) => {
+            const parts = (it.subtext ?? '').split(' · ');
+            const amountIdx = parts.findIndex((p) => p.includes('€'));
+            const amount = amountIdx >= 0 ? parts[amountIdx] : it.subtext;
+            const caption =
+              amountIdx >= 0
+                ? parts.filter((_, i) => i !== amountIdx).join(' · ')
+                : '';
+            return (
+              <View key={it.id} style={styles.previewItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewItemText} numberOfLines={1}>
+                    {it.text}
+                  </Text>
+                  {caption ? (
+                    <Text style={styles.previewItemSubtext} numberOfLines={1}>
+                      {caption}
                     </Text>
-                    {caption ? (
-                      <Text
-                        style={styles.previewItemSubtextDark}
-                        numberOfLines={1}
-                      >
-                        {caption}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {amount ? (
-                    <View
-                      style={[
-                        styles.amountChip,
-                        { backgroundColor: CHIP_BG[it.status] },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.amountChipText,
-                          { color: CHIP_TEXT[it.status] },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {amount}
-                      </Text>
-                    </View>
                   ) : null}
                 </View>
-              );
-            })}
-          </View>
-        ) : null}
-      </View>
+                {amount ? (
+                  <Text
+                    style={[
+                      styles.previewItemAmount,
+                      { color: AMOUNT_COLOR[it.status] },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {amount}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -936,108 +987,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  previewTile: {
-    borderRadius: 20,
-    padding: 14,
-    gap: 4,
-    shadowColor: '#000000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    minHeight: 170,
-  },
-  previewTitlePill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    marginBottom: 2,
-  },
-  previewTitlePillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  previewMetricBlock: {
-    marginTop: 6,
-    gap: 2,
-  },
-  previewValueDark: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#F8FAFC',
-  },
-  previewValueHero: {
-    fontSize: 42,
-  },
-  previewValueSmallDark: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginLeft: 8,
-  },
-  previewListHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginTop: 8,
-  },
-  previewMetricLabelDark: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  previewTrendDark: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  previewTrendFaint: {
-    fontSize: 10,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  previewSectionTitleDark: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  previewItemsDark: {
-    marginTop: 10,
-    gap: 8,
-  },
-  previewItemDark: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  previewItemTextDark: {
-    fontSize: 13,
-    color: '#F1F5F9',
-    fontWeight: '600',
-  },
-  previewItemSubtextDark: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 1,
-  },
-  amountChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  amountChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  // (legacy light-theme preview styles removed — WidgetPreview owns its own set)
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
   previewLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -1055,55 +1004,112 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3730A3',
   },
-  previewTitle: {
-    fontSize: 11,
-    fontWeight: '600',
+  // Horizontal gallery of preview tiles (small + medium)
+  previewGallery: {
+    gap: 16,
+    paddingVertical: 4,
+    paddingRight: 24,
+  },
+  previewColumn: {
+    gap: 6,
+  },
+  previewSizeLabel: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#6B7280',
+    letterSpacing: 0.6,
+  },
+  // Individual widget tile — white / system-neutral with soft rounded corners
+  // and a subtle shadow, mirroring the iOS WidgetKit tile silhouette.
+  previewTile: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  previewTitleRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  previewTitlePill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    maxWidth: '100%',
+  },
+  previewTitlePillText: {
+    fontSize: 10,
+    fontWeight: '700',
     letterSpacing: 0.4,
+    color: '#FFFFFF',
+  },
+  previewMetricBlock: {
+    marginTop: 4,
   },
   previewValue: {
-    fontSize: 28,
     fontWeight: '700',
     color: '#111827',
+  },
+  previewListHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 6,
+    gap: 8,
   },
   previewMetricLabel: {
     fontSize: 11,
     color: '#6B7280',
+    marginTop: 1,
   },
   previewTrend: {
     fontSize: 11,
-    color: '#059669',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  previewTrendFaint: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 1,
   },
   previewSectionTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    color: '#374151',
-    letterSpacing: 0.4,
-    marginBottom: 4,
+    color: '#6B7280',
+    letterSpacing: 0.6,
+    marginTop: 8,
   },
   previewItems: {
-    marginTop: 8,
-    gap: 6,
+    marginTop: 4,
+    gap: 4,
   },
   previewItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 5,
   },
   previewItemText: {
     fontSize: 12,
     color: '#111827',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   previewItemSubtext: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6B7280',
+    marginTop: 1,
+  },
+  previewItemAmount: {
+    fontSize: 12,
+    fontWeight: '700',
+    maxWidth: '55%',
+    textAlign: 'right',
   },
   metaBlock: {
     gap: 2,

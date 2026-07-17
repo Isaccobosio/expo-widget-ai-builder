@@ -10,16 +10,21 @@
  * its own timeline, so the user can place multiple widgets on the home screen
  * and independently update each one from the app via natural language.
  *
- * Visual system: dark theme, full-bleed container background per template,
- * amount right-aligned in a colored status chip, headline pill for the title.
- * All content is placed inside a maxed-out frame so the widget fills the
- * whole system container (systemSmall / systemMedium).
+ * Visual system: NO container background — WidgetKit uses the system default
+ * widget material (auto light/dark). Text uses SwiftUI semantic colors
+ * (`primary` / `secondary`) so it inverts automatically. Only accent
+ * highlights (title pill, primary trend, item amounts) use fixed hex colors —
+ * they have enough saturation to remain legible on both light and dark
+ * widget surfaces.
+ *
+ * Empty state: if there's no data yet (widget picker preview, placeholder
+ * snapshot, or before the first `updateTimeline`), the widget renders as a
+ * blank tile — no placeholder text, no fake numbers.
  */
 
 import { HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
   background,
-  containerBackground,
   font,
   foregroundStyle,
   frame,
@@ -71,11 +76,6 @@ export type WidgetId = 'overview' | 'finance_focus' | 'tax_tracker';
  * visible to the widget runtime — external helpers/functions AND external
  * const objects/lookup tables are NOT hoisted into scope. Any helper logic
  * and any constant table (like a status→color map) MUST be inlined here.
- *
- * Rendering can be triggered by the OS with a partial/empty payload BEFORE
- * any `updateTimeline` has been called (widget picker preview, placeholder
- * snapshot, Glance previews on Android). We use inline `??` fallbacks on
- * every field so JSX access is always safe.
  */
 const DynamicWidget = (
   rawProps: DynamicWidgetProps | undefined,
@@ -83,38 +83,51 @@ const DynamicWidget = (
 ) => {
   'widget';
 
-  const template = rawProps?.template ?? 'split_overview';
-  const title = rawProps?.content?.title ?? 'IN ATTESA';
-  const primaryLabel =
-    rawProps?.content?.primaryMetric?.label ?? 'Nessun dato';
-  const primaryValue = rawProps?.content?.primaryMetric?.value ?? '—';
-  const primaryTrend = rawProps?.content?.primaryMetric?.trend ?? '';
-  const sectionTitle = rawProps?.content?.secondarySection?.title ?? '';
-  const rawItems = rawProps?.content?.secondarySection?.items;
-  const safeItems: SectionItem[] = Array.isArray(rawItems) ? rawItems : [];
-
   const isSmall = env?.widgetFamily === 'systemSmall';
 
-  // Dark palette — chosen to look premium on any home-screen wallpaper.
-  // Container background is a deep template-tinted color so each template is
-  // visually distinct at a glance.
-  const bgColor =
-    template === 'list_focus'
-      ? '#1E1B4B' // indigo-950 (list = focus/alert)
-      : template === 'metric_with_alert'
-        ? '#0F172A' // slate-900 (metric = hero number)
-        : '#111827'; // gray-900 (overview = neutral)
+  // Empty-state gate: no timeline data yet → render an intentionally blank
+  // widget. We treat missing primaryMetric.value as "empty" so partial /
+  // half-migrated payloads also render clean.
+  const hasContent = Boolean(
+    rawProps?.content?.primaryMetric?.value &&
+      rawProps.content.primaryMetric.value.length > 0,
+  );
+  if (!hasContent) {
+    return (
+      <VStack
+        alignment="leading"
+        spacing={0}
+        modifiers={[
+          frame({
+            maxWidth: 10000,
+            maxHeight: 10000,
+            alignment: 'topLeading',
+          }),
+        ]}
+      >
+        <Spacer />
+      </VStack>
+    );
+  }
 
+  const template = rawProps!.template ?? 'split_overview';
+  const title = rawProps!.content.title ?? '';
+  const primaryLabel = rawProps!.content.primaryMetric.label ?? '';
+  const primaryValue = rawProps!.content.primaryMetric.value;
+  const primaryTrend = rawProps!.content.primaryMetric.trend ?? '';
+  const sectionTitle = rawProps!.content.secondarySection?.title ?? '';
+  const rawItems = rawProps!.content.secondarySection?.items;
+  const safeItems: SectionItem[] = Array.isArray(rawItems) ? rawItems : [];
+
+  // Accent color per template — used for the title pill and (for
+  // split_overview / metric_with_alert) the trend line. These hex values
+  // are picked to have good contrast on both light and dark widget surfaces.
   const accentColor =
     template === 'list_focus'
-      ? '#A5B4FC' // indigo-300
+      ? '#6366F1' // indigo-500
       : template === 'metric_with_alert'
-        ? '#34D399' // emerald-400
-        : '#60A5FA'; // blue-400
-
-  const textPrimary = '#F8FAFC'; // slate-50
-  const textMuted = '#94A3B8'; // slate-400
-  const textFaint = '#64748B'; // slate-500
+        ? '#10B981' // emerald-500
+        : '#3B82F6'; // blue-500
 
   // Per-template item budget. `list_focus` is the "super-large list" view,
   // so on medium we lean into the list.
@@ -158,27 +171,27 @@ const DynamicWidget = (
           alignment: 'topLeading',
         }),
         padding({ all: 14 }),
-        // Widget-scoped container background — applies to the whole tile,
-        // including the safe-area corners on iOS 17+.
-        containerBackground(bgColor, 'widget'),
       ]}
     >
-      {/* Title pill — colored accent bar makes each template visually distinct */}
-      <HStack alignment="center" spacing={6}>
-        <Text
-          modifiers={[
-            font({ size: 10, weight: 'bold' }),
-            foregroundStyle(bgColor),
-            padding({ horizontal: 8, vertical: 3 }),
-            background(accentColor, shapes.capsule()),
-            lineLimit(1),
-            truncationMode('tail'),
-          ]}
-        >
-          {title}
-        </Text>
-        <Spacer />
-      </HStack>
+      {/* Title pill — colored accent bar makes each template visually distinct.
+          White text on saturated accent → readable in both light and dark. */}
+      {title ? (
+        <HStack alignment="center" spacing={6}>
+          <Text
+            modifiers={[
+              font({ size: 10, weight: 'bold' }),
+              foregroundStyle('#FFFFFF'),
+              padding({ horizontal: 8, vertical: 3 }),
+              background(accentColor, shapes.capsule()),
+              lineLimit(1),
+              truncationMode('tail'),
+            ]}
+          >
+            {title}
+          </Text>
+          <Spacer />
+        </HStack>
+      ) : null}
 
       {/* Primary metric block — layout depends on template */}
       {template === 'list_focus' ? (
@@ -192,7 +205,7 @@ const DynamicWidget = (
             <Text
               modifiers={[
                 font({ size: 10 }),
-                foregroundStyle(textMuted),
+                foregroundStyle('secondary'),
                 lineLimit(1),
                 truncationMode('tail'),
               ]}
@@ -203,7 +216,7 @@ const DynamicWidget = (
               <Text
                 modifiers={[
                   font({ size: 9 }),
-                  foregroundStyle(textFaint),
+                  foregroundStyle('secondary'),
                   lineLimit(1),
                   truncationMode('tail'),
                 ]}
@@ -216,7 +229,7 @@ const DynamicWidget = (
           <Text
             modifiers={[
               font({ size: primaryValueSize, weight: 'bold' }),
-              foregroundStyle(textPrimary),
+              foregroundStyle('primary'),
               lineLimit(1),
               minimumScaleFactor(0.6),
             ]}
@@ -230,7 +243,7 @@ const DynamicWidget = (
           <Text
             modifiers={[
               font({ size: primaryValueSize, weight: 'bold' }),
-              foregroundStyle(textPrimary),
+              foregroundStyle('primary'),
               lineLimit(1),
               minimumScaleFactor(0.5),
             ]}
@@ -240,7 +253,7 @@ const DynamicWidget = (
           <Text
             modifiers={[
               font({ size: 11 }),
-              foregroundStyle(textMuted),
+              foregroundStyle('secondary'),
               lineLimit(1),
               truncationMode('tail'),
             ]}
@@ -267,7 +280,7 @@ const DynamicWidget = (
         <Text
           modifiers={[
             font({ size: 9, weight: 'bold' }),
-            foregroundStyle(textFaint),
+            foregroundStyle('secondary'),
             padding({ top: template === 'list_focus' ? 10 : 12 }),
             lineLimit(1),
             truncationMode('tail'),
@@ -277,8 +290,9 @@ const DynamicWidget = (
         </Text>
       ) : null}
 
-      {/* Item list — two-column rows with the amount right-aligned in a
-          status-colored chip so money is always the visual anchor. */}
+      {/* Item list — two-column rows. Amount is bold + status-colored (no
+          background chip) so it stays readable on both light and dark
+          widget surfaces. */}
       {items.length > 0 ? (
         <VStack
           alignment="leading"
@@ -296,19 +310,13 @@ const DynamicWidget = (
               amountIdx >= 0
                 ? parts.filter((_, i) => i !== amountIdx).join(' · ')
                 : '';
-            // Chip: bright text on translucent-ish tinted background.
-            const chipText =
+            // Saturated tone that reads well on both light and dark bg.
+            const amountColor =
               it.status === 'critical'
-                ? '#FCA5A5' // red-300
+                ? '#DC2626' // red-600
                 : it.status === 'warning'
-                  ? '#FCD34D' // amber-300
-                  : '#93C5FD'; // blue-300
-            const chipBg =
-              it.status === 'critical'
-                ? '#7F1D1D' // red-900
-                : it.status === 'warning'
-                  ? '#78350F' // amber-900
-                  : '#1E3A8A'; // blue-900
+                  ? '#D97706' // amber-600
+                  : '#2563EB'; // blue-600
             const labelSize =
               template === 'list_focus'
                 ? isSmall
@@ -332,7 +340,7 @@ const DynamicWidget = (
                   <Text
                     modifiers={[
                       font({ size: labelSize, weight: 'semibold' }),
-                      foregroundStyle(textPrimary),
+                      foregroundStyle('primary'),
                       lineLimit(1),
                       truncationMode('tail'),
                     ]}
@@ -343,7 +351,7 @@ const DynamicWidget = (
                     <Text
                       modifiers={[
                         font({ size: Math.max(labelSize - 2, 9) }),
-                        foregroundStyle(textMuted),
+                        foregroundStyle('secondary'),
                         lineLimit(1),
                         truncationMode('tail'),
                       ]}
@@ -357,9 +365,7 @@ const DynamicWidget = (
                   <Text
                     modifiers={[
                       font({ size: amountSize, weight: 'bold' }),
-                      foregroundStyle(chipText),
-                      padding({ horizontal: 8, vertical: 4 }),
-                      background(chipBg, shapes.roundedRectangle({ cornerRadius: 8 })),
+                      foregroundStyle(amountColor),
                       lineLimit(1),
                       minimumScaleFactor(0.6),
                       multilineTextAlignment('trailing'),
@@ -372,17 +378,7 @@ const DynamicWidget = (
             );
           })}
         </VStack>
-      ) : template === 'metric_with_alert' ? null : (
-        <Text
-          modifiers={[
-            font({ size: 10 }),
-            foregroundStyle(textFaint),
-            padding({ top: 6 }),
-          ]}
-        >
-          Nessun elemento.
-        </Text>
-      )}
+      ) : null}
 
       <Spacer />
     </VStack>
