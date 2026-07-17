@@ -476,20 +476,18 @@ function WidgetPreview({ props }: { props: DynamicWidgetProps }) {
         </View>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.previewGallery}
-      >
+      {/* Stacked layout: small on top, medium below. Both are centered so
+          the fixed WidgetKit dimensions read as real device shapes. */}
+      <View style={styles.previewGallery}>
         <View style={styles.previewColumn}>
-          <Text style={styles.previewSizeLabel}>Piccolo</Text>
+          <Text style={styles.previewSizeLabel}>Piccolo · systemSmall</Text>
           <WidgetPreviewTile size="small" props={props} />
         </View>
         <View style={styles.previewColumn}>
-          <Text style={styles.previewSizeLabel}>Medio</Text>
+          <Text style={styles.previewSizeLabel}>Medio · systemMedium</Text>
           <WidgetPreviewTile size="medium" props={props} />
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -514,7 +512,7 @@ function WidgetPreviewTile({
       : t === 'list_focus'
         ? isSmall
           ? 2
-          : 5
+          : 4
         : isSmall
           ? 1
           : 3;
@@ -1009,20 +1007,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3730A3',
   },
-  // Horizontal gallery of preview tiles (small + medium)
+  // Vertical gallery of preview tiles (small on top, medium below). Each
+  // column centers its fixed-dimension tile so the WidgetKit shape reads.
   previewGallery: {
     gap: 16,
     paddingVertical: 4,
-    paddingRight: 24,
   },
   previewColumn: {
     gap: 6,
+    alignItems: 'center',
   },
   previewSizeLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: '#6B7280',
     letterSpacing: 0.6,
+    alignSelf: 'flex-start',
   },
   // Individual widget tile — white / system-neutral with soft rounded corners
   // and a subtle shadow, mirroring the iOS WidgetKit tile silhouette.

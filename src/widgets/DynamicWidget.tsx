@@ -25,10 +25,10 @@
 import { HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
   background,
+  containerBackground,
   fixedSize,
   font,
   foregroundStyle,
-  frame,
   layoutPriority,
   lineLimit,
   minimumScaleFactor,
@@ -90,6 +90,11 @@ const DynamicWidget = (
   // Empty-state gate: no timeline data yet → render an intentionally blank
   // widget. We treat missing primaryMetric.value as "empty" so partial /
   // half-migrated payloads also render clean.
+  //
+  // NOTE: we use containerBackground('clear', 'widget') as the iOS 17 opt-in
+  // signal for the SwiftUI "full-bleed" widget layout. Without it, the
+  // VStack sizes to its intrinsic content (a lone Spacer collapses to zero)
+  // and WidgetKit centers a 0-sized view, leaving stray fragments visible.
   const hasContent = Boolean(
     rawProps?.content?.primaryMetric?.value &&
       rawProps.content.primaryMetric.value.length > 0,
@@ -99,13 +104,7 @@ const DynamicWidget = (
       <VStack
         alignment="leading"
         spacing={0}
-        modifiers={[
-          frame({
-            maxWidth: 10000,
-            maxHeight: 10000,
-            alignment: 'topLeading',
-          }),
-        ]}
+        modifiers={[containerBackground('clear', 'widget')]}
       >
         <Spacer />
       </VStack>
@@ -140,7 +139,7 @@ const DynamicWidget = (
       : template === 'list_focus'
         ? isSmall
           ? 2
-          : 5
+          : 4
         : isSmall
           ? 1
           : 3;
@@ -166,15 +165,11 @@ const DynamicWidget = (
       alignment="leading"
       spacing={0}
       modifiers={[
-        // Fill the whole widget container. maxWidth/maxHeight with a very
-        // large sentinel simulates SwiftUI's .infinity in @expo/ui.
-        frame({
-          maxWidth: 10000,
-          maxHeight: 10000,
-          alignment: 'topLeading',
-        }),
-        // WidgetKit already applies its own content margins on iOS 17+;
-        // we add only a tiny extra pad so text doesn't touch the tile edge.
+        // iOS 17+ opt-in: transparent containerBackground signals WidgetKit
+        // to use the modern full-bleed layout where content fills the whole
+        // tile (WidgetKit still applies its own content margins on top).
+        containerBackground('clear', 'widget'),
+        // Tiny extra pad so text doesn't touch the system-drawn margin edge.
         padding({ all: 2 }),
       ]}
     >
