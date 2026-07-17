@@ -239,6 +239,41 @@ export default function App() {
     [slots, updateSlot, pushHistory],
   );
 
+  /**
+   * Reset a slot back to its empty state:
+   * - clear the prompt in the editor
+   * - drop any preview / meta from local state
+   * - push an empty payload to the widget timeline so the home-screen tile
+   *   also goes blank (the widget's `hasContent` gate returns an empty
+   *   VStack when primaryMetric.value is empty)
+   */
+  const clearSlot = useCallback(
+    (id: WidgetId) => {
+      widgetsById[id].updateTimeline([
+        {
+          date: new Date(),
+          props: {
+            template: 'split_overview',
+            content: {
+              title: '',
+              primaryMetric: { label: '', value: '', trend: '' },
+              secondarySection: { title: '', items: [] },
+            },
+          },
+        },
+      ]);
+      updateSlot(id, {
+        prompt: '',
+        status: 'idle',
+        message: '',
+        props: null,
+        meta: null,
+        lastSyncedAt: null,
+      });
+    },
+    [updateSlot],
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -303,6 +338,7 @@ export default function App() {
         history={history}
         onChangePrompt={(text) => updateSlot(activeSlot, { prompt: text })}
         onSync={() => syncSlot(activeSlot)}
+        onClear={() => clearSlot(activeSlot)}
       />
 
       {/* Info modal */}
@@ -321,12 +357,14 @@ function SlotEditor({
   history,
   onChangePrompt,
   onSync,
+  onClear,
 }: {
   id: WidgetId;
   slot: SlotState;
   history: string[];
   onChangePrompt: (text: string) => void;
   onSync: () => void;
+  onClear: () => void;
 }) {
   const info = WIDGET_DISPLAY[id];
   const meta = slot.meta;
@@ -387,23 +425,45 @@ function SlotEditor({
         editable={slot.status !== 'loading'}
       />
 
-      <Pressable
-        onPress={onSync}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-          slot.status === 'loading' && styles.buttonDisabled,
-        ]}
-        disabled={slot.status === 'loading'}
-      >
-        {slot.status === 'loading' ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {slot.props ? 'Riconfigura slot' : 'Salva e sincronizza con AI'}
-          </Text>
-        )}
-      </Pressable>
+      <View style={styles.actionRow}>
+        <Pressable
+          onPress={onSync}
+          style={({ pressed }) => [
+            styles.button,
+            styles.buttonPrimary,
+            pressed && styles.buttonPressed,
+            slot.status === 'loading' && styles.buttonDisabled,
+          ]}
+          disabled={slot.status === 'loading'}
+        >
+          {slot.status === 'loading' ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {slot.props ? 'Riconfigura slot' : 'Salva e sincronizza con AI'}
+            </Text>
+          )}
+        </Pressable>
+
+        {/* Clear button: appears once the user has typed a prompt or the slot
+            has been configured. Pressing it wipes the prompt, drops the local
+            preview, and pushes an empty payload so the home-screen widget
+            re-renders as an empty tile. */}
+        {slot.props || slot.prompt.trim().length > 0 ? (
+          <Pressable
+            onPress={onClear}
+            disabled={slot.status === 'loading'}
+            style={({ pressed }) => [
+              styles.buttonSecondary,
+              pressed && styles.buttonSecondaryPressed,
+              slot.status === 'loading' && styles.buttonDisabled,
+            ]}
+            accessibilityLabel="Svuota slot"
+          >
+            <Text style={styles.buttonSecondaryText}>Svuota</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       {slot.status === 'error' ? (
         <Text style={styles.error}>{slot.message}</Text>
@@ -966,6 +1026,32 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'stretch',
+  },
+  buttonPrimary: {
+    flex: 1,
+  },
+  buttonSecondary: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonSecondaryPressed: {
+    backgroundColor: '#F3F4F6',
+  },
+  buttonSecondaryText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '600',
   },
   buttonPressed: {
     opacity: 0.85,
